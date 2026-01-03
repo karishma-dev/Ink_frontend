@@ -1,26 +1,233 @@
 @import "tailwindcss";
 
+/* ============================================
+   AI Writer Design System
+   LIGHT Theme with Cream Background
+   Palette: #fff (cream), #810000 (maroon), #630000, #1B1717
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+	/* Core Palette - LIGHT MODE */
+	--cream: #fff;
+	--maroon: #810000;
+	--maroon-dark: #630000;
+	--charcoal: #1b1717;
+
+	/* Background Colors - Pure Cream Theme */
+	--background: #fff;
+	--background-surface: #fff;
+	--background-elevated: #ffffff;
+	--background-muted: #fff;
+
+	/* Text Colors - Dark text on light background */
+	--foreground: #1b1717;
+	--foreground-secondary: #3d3838;
+	--foreground-muted: #6a6565;
+
+	/* Primary - Maroon for primary CTAs */
+	--primary: #810000;
+	--primary-hover: #630000;
+	--primary-light: rgba(129, 0, 0, 0.1);
+	--primary-foreground: #ffffff;
+
+	/* Secondary - Charcoal for secondary actions */
+	--secondary: #1b1717;
+	--secondary-hover: #2d2828;
+	--secondary-light: rgba(27, 23, 23, 0.08);
+	--secondary-foreground: #ffffff;
+
+	/* Accent - Maroon dark for highlights */
+	--accent: #630000;
+	--accent-hover: #810000;
+	--accent-light: rgba(99, 0, 0, 0.08);
+	--accent-foreground: #ffffff;
+
+	/* Border & Dividers */
+	--border: #c9c5b6;
+	--border-hover: #b5b1a3;
+	--ring: #810000;
+
+	/* Semantic Colors */
+	--success: #16a34a;
+	--success-light: rgba(22, 163, 74, 0.1);
+	--warning: #ea580c;
+	--warning-light: rgba(234, 88, 12, 0.1);
+	--error: #dc2626;
+	--error-light: rgba(220, 38, 38, 0.1);
+	--info: #0284c7;
+	--info-light: rgba(2, 132, 199, 0.1);
+
+	/* Shadows - Subtle for light theme */
+	--shadow-xs: 0 1px 2px 0 rgb(27 23 23 / 0.05);
+	--shadow-sm: 0 1px 3px 0 rgb(27 23 23 / 0.08),
+		0 1px 2px -1px rgb(27 23 23 / 0.05);
+	--shadow-md: 0 4px 6px -1px rgb(27 23 23 / 0.1),
+		0 2px 4px -2px rgb(27 23 23 / 0.05);
+	--shadow-lg: 0 10px 15px -3px rgb(27 23 23 / 0.1),
+		0 4px 6px -4px rgb(27 23 23 / 0.05);
+
+	/* Border Radius */
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+	--radius-full: 9999px;
 }
 
+/* Tailwind Theme Integration */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+	--color-background: var(--background);
+	--color-background-surface: var(--background-surface);
+	--color-background-elevated: var(--background-elevated);
+	--color-background-muted: var(--background-muted);
+	--color-background-editor: var(--background-editor);
+
+	--color-foreground: var(--foreground);
+	--color-foreground-secondary: var(--foreground-secondary);
+	--color-foreground-muted: var(--foreground-muted);
+
+	--color-primary: var(--primary);
+	--color-primary-hover: var(--primary-hover);
+	--color-primary-light: var(--primary-light);
+	--color-primary-foreground: var(--primary-foreground);
+
+	--color-secondary: var(--secondary);
+	--color-secondary-hover: var(--secondary-hover);
+	--color-secondary-light: var(--secondary-light);
+	--color-secondary-foreground: var(--secondary-foreground);
+
+	--color-accent: var(--accent);
+	--color-accent-hover: var(--accent-hover);
+	--color-accent-light: var(--accent-light);
+	--color-accent-foreground: var(--accent-foreground);
+
+	--color-border: var(--border);
+	--color-border-hover: var(--border-hover);
+	--color-ring: var(--ring);
+
+	--color-success: var(--success);
+	--color-success-light: var(--success-light);
+	--color-warning: var(--warning);
+	--color-warning-light: var(--warning-light);
+	--color-error: var(--error);
+	--color-error-light: var(--error-light);
+	--color-info: var(--info);
+	--color-info-light: var(--info-light);
+
+	--font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+	--font-mono: var(--font-geist-mono), ui-monospace, monospace;
+	--font-serif: Georgia, Cambria, "Times New Roman", serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Base Styles */
+* {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-sans);
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus Styles */
+*:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+	background-color: var(--primary);
+	color: var(--primary-foreground);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--border);
+	border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--border-hover);
+}
+
+/* Editor Container */
+.editor-container {
+	/* No background styling - uses page background */
+}
+
+/* Editor Styles */
+.editor-content {
+	font-family: var(--font-serif);
+	font-size: 1.125rem;
+	line-height: 1.9;
+	color: var(--foreground);
+}
+
+.editor-content:focus {
+	outline: none;
+}
+
+.editor-content::placeholder {
+	color: var(--foreground-muted);
+}
+
+/* Animation Utilities */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+.animate-fade-in {
+	animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-in-right {
+	animation: slideInRight 0.25s ease-out;
+}
+
+.animate-pulse {
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
