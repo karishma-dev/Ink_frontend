@@ -22,6 +22,20 @@ export function usePersonas() {
 }
 
 /**
+ * Hook to fetch a single persona by ID
+ */
+export function usePersona(id: string) {
+	return useQuery({
+		queryKey: ["persona", id],
+		queryFn: async () => {
+			const response = await api.get(`/personas/${id}`);
+			return response.data;
+		},
+		enabled: !!id,
+	});
+}
+
+/**
  * Hook to create a new persona
  */
 export function useCreatePersona() {
