@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Trash2, File, FileCode } from "lucide-react";
+import { FileText, Trash, File, FileCode } from "@phosphor-icons/react";
 import { Button, Badge, useToast } from "@/components/ui";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import { useDocuments, useDeleteDocument } from "../hooks/useDocuments";
@@ -29,7 +29,7 @@ export function DocumentList() {
 	if (error) {
 		return (
 			<div className='text-center py-12'>
-				<p className='text-error'>
+				<p className='text-error font-medium'>
 					Failed to load documents. Please try again.
 				</p>
 			</div>
@@ -41,30 +41,30 @@ export function DocumentList() {
 	}
 
 	return (
-		<div className='bg-background-surface rounded-xl border border-border overflow-hidden'>
-			<table className='w-full'>
+		<div className='bg-background-surface rounded-xl border border-border overflow-hidden shadow-sm animate-fade-in'>
+			<table className='w-full text-left'>
 				<thead>
-					<tr className='border-b border-border bg-background-muted'>
-						<th className='text-left text-xs font-medium text-foreground-secondary uppercase tracking-wider px-4 py-3'>
+					<tr className='border-b border-border bg-background-surface'>
+						<th className='text-xs font-semibold text-foreground-muted uppercase tracking-wider px-6 py-4'>
 							Name
 						</th>
-						<th className='text-left text-xs font-medium text-foreground-secondary uppercase tracking-wider px-4 py-3'>
+						<th className='text-xs font-semibold text-foreground-muted uppercase tracking-wider px-6 py-4'>
 							Type
 						</th>
-						<th className='text-left text-xs font-medium text-foreground-secondary uppercase tracking-wider px-4 py-3'>
+						<th className='text-xs font-semibold text-foreground-muted uppercase tracking-wider px-6 py-4'>
 							Size
 						</th>
-						<th className='text-left text-xs font-medium text-foreground-secondary uppercase tracking-wider px-4 py-3'>
+						<th className='text-xs font-semibold text-foreground-muted uppercase tracking-wider px-6 py-4'>
 							Status
 						</th>
-						<th className='text-left text-xs font-medium text-foreground-secondary uppercase tracking-wider px-4 py-3'>
+						<th className='text-xs font-semibold text-foreground-muted uppercase tracking-wider px-6 py-4'>
 							Uploaded
 						</th>
-						<th className='px-4 py-3'></th>
+						<th className='px-6 py-4'></th>
 					</tr>
 				</thead>
 				<tbody className='divide-y divide-border'>
-					{data.documents.map((doc) => (
+					{data.documents.map((doc: Document) => (
 						<DocumentRow
 							key={doc.id}
 							document={doc}
@@ -88,63 +88,63 @@ function DocumentRow({ document, onDelete, isDeleting }: DocumentRowProps) {
 	const getFileIcon = (type: string) => {
 		switch (type) {
 			case ".pdf":
-				return <File className='h-5 w-5 text-error' />;
+				return <File className='h-5 w-5 text-red-500' weight='duotone' />;
 			case ".md":
-				return <FileCode className='h-5 w-5 text-info' />;
+				return <FileCode className='h-5 w-5 text-blue-500' weight='duotone' />;
 			default:
-				return <FileText className='h-5 w-5 text-foreground-muted' />;
-		}
-	};
-
-	const getStatusBadge = (status: string) => {
-		switch (status) {
-			case "indexed":
-				return <Badge variant='success'>Indexed</Badge>;
-			case "processing":
-				return <Badge variant='warning'>Processing</Badge>;
-			case "pending":
-				return <Badge>Pending</Badge>;
-			default:
-				return <Badge>{status}</Badge>;
+				return (
+					<FileText
+						className='h-5 w-5 text-foreground-muted'
+						weight='duotone'
+					/>
+				);
 		}
 	};
 
 	return (
-		<tr className='hover:bg-background-muted/50 transition-colors'>
-			<td className='px-4 py-3'>
+		<tr className='hover:bg-background-surface/50 transition-colors group'>
+			<td className='px-6 py-4'>
 				<div className='flex items-center gap-3'>
-					{getFileIcon(document.file_type)}
+					<div className='w-8 h-8 rounded-lg bg-background flex items-center justify-center border border-border group-hover:bg-white transition-colors'>
+						{getFileIcon(document.file_type)}
+					</div>
 					<span className='text-sm font-medium text-foreground truncate max-w-[200px]'>
 						{document.filename}
 					</span>
 				</div>
 			</td>
-			<td className='px-4 py-3'>
-				<span className='text-sm text-foreground-secondary uppercase'>
+			<td className='px-6 py-4'>
+				<span className='text-xs font-semibold text-foreground-muted uppercase bg-background px-2 py-1 rounded'>
 					{document.file_type.replace(".", "")}
 				</span>
 			</td>
-			<td className='px-4 py-3'>
-				<span className='text-sm text-foreground-secondary'>
+			<td className='px-6 py-4'>
+				<span className='text-sm text-foreground-muted'>
 					{formatFileSize(document.file_size)}
 				</span>
 			</td>
-			<td className='px-4 py-3'>{getStatusBadge(document.status)}</td>
-			<td className='px-4 py-3'>
+			<td className='px-6 py-4'>
+				{document.status === "indexed" ? (
+					<Badge variant='success'>Indexed</Badge>
+				) : document.status === "processing" ? (
+					<Badge variant='warning'>Processing</Badge>
+				) : (
+					<Badge>{document.status}</Badge>
+				)}
+			</td>
+			<td className='px-6 py-4'>
 				<span className='text-sm text-foreground-muted'>
 					{formatRelativeTime(document.created_at)}
 				</span>
 			</td>
-			<td className='px-4 py-3'>
-				<Button
-					variant='ghost'
-					size='sm'
-					className='text-error hover:bg-error-light'
+			<td className='px-6 py-4 text-right'>
+				<button
 					onClick={() => onDelete(document.id)}
 					disabled={isDeleting}
+					className='p-2 rounded-lg text-foreground-muted hover:text-error hover:bg-error-light transition-all opacity-0 group-hover:opacity-100'
 				>
-					<Trash2 className='h-4 w-4' />
-				</Button>
+					<Trash className='h-4 w-4' />
+				</button>
 			</td>
 		</tr>
 	);
@@ -154,18 +154,18 @@ function DocumentListSkeleton() {
 	return (
 		<div className='bg-background-surface rounded-xl border border-border overflow-hidden'>
 			<div className='animate-pulse'>
-				<div className='h-10 bg-background-muted' />
+				<div className='h-12 bg-background-muted' />
 				{[...Array(5)].map((_, i) => (
 					<div
 						key={i}
-						className='flex items-center gap-4 px-4 py-3 border-t border-border'
+						className='flex items-center gap-4 px-6 py-4 border-t border-border'
 					>
-						<div className='w-5 h-5 bg-border rounded' />
+						<div className='w-8 h-8 bg-border rounded-lg' />
 						<div className='flex-1 h-4 bg-border rounded' />
 						<div className='w-12 h-4 bg-border rounded' />
 						<div className='w-16 h-4 bg-border rounded' />
-						<div className='w-16 h-6 bg-border rounded-full' />
-						<div className='w-20 h-4 bg-border rounded' />
+						<div className='w-20 h-6 bg-border rounded-full' />
+						<div className='w-24 h-4 bg-border rounded' />
 					</div>
 				))}
 			</div>
@@ -175,15 +175,15 @@ function DocumentListSkeleton() {
 
 function EmptyState() {
 	return (
-		<div className='text-center py-16'>
+		<div className='text-center py-16 bg-background-surface rounded-xl border border-border border-dashed'>
 			<div className='w-16 h-16 rounded-2xl bg-primary-light flex items-center justify-center mx-auto mb-6'>
-				<FileText className='h-8 w-8 text-primary' />
+				<FileText className='h-8 w-8 text-primary' weight='duotone' />
 			</div>
 			<h3 className='text-lg font-semibold text-foreground mb-2'>
 				No documents yet
 			</h3>
-			<p className='text-foreground-secondary max-w-md mx-auto'>
-				Upload your first document to use for RAG-powered content generation.
+			<p className='text-foreground-muted max-w-sm mx-auto'>
+				Upload your first document to use for context-aware writing.
 			</p>
 		</div>
 	);

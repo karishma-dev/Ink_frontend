@@ -1,11 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
-import { API_ENDPOINTS } from "@/lib/constants";
 import {
-	Document,
-	DocumentListResponse,
-	DocumentUploadResponse,
-} from "../types";
+	listDocumentsService,
+	uploadDocumentService,
+	deleteDocumentService,
+} from "@/services/documentService";
 
 /**
  * Hook to fetch user's documents
@@ -14,29 +12,10 @@ export function useDocuments(limit = 20, offset = 0) {
 	return useQuery({
 		queryKey: ["documents", limit, offset],
 		queryFn: async () => {
-			const response = await api.get<DocumentListResponse>(
-				API_ENDPOINTS.DOCUMENTS,
-				{
-					params: { limit, offset },
-				}
-			);
-			return response.data;
+			const res = await listDocumentsService(limit, offset);
+			if (!res.success) throw new Error(res.error);
+			return res.data;
 		},
-	});
-}
-
-/**
- * Hook to fetch a single document
- */
-export function useDocument(id: number | null) {
-	return useQuery({
-		queryKey: ["document", id],
-		queryFn: async () => {
-			if (!id) return null;
-			const response = await api.get<Document>(API_ENDPOINTS.DOCUMENT(id));
-			return response.data;
-		},
-		enabled: !!id,
 	});
 }
 
@@ -48,19 +27,9 @@ export function useUploadDocument() {
 
 	return useMutation({
 		mutationFn: async (file: File) => {
-			const formData = new FormData();
-			formData.append("file", file);
-
-			const response = await api.post<DocumentUploadResponse>(
-				API_ENDPOINTS.DOCUMENT_UPLOAD,
-				formData,
-				{
-					headers: {
-						"Content-Type": "multipart/form-data",
-					},
-				}
-			);
-			return response.data;
+			const res = await uploadDocumentService(file);
+			if (!res.success) throw new Error(res.error);
+			return res.data;
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["documents"] });
@@ -76,7 +45,9 @@ export function useDeleteDocument() {
 
 	return useMutation({
 		mutationFn: async (id: number) => {
-			await api.delete(API_ENDPOINTS.DOCUMENT(id));
+			const res = await deleteDocumentService(id);
+			if (!res.success) throw new Error(res.error);
+			return res.data;
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["documents"] });

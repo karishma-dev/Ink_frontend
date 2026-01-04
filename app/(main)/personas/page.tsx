@@ -1,45 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, ArrowLeft, FileText } from "lucide-react";
+import { Plus, UserCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui";
 import { PersonaList } from "@/features/personas";
 
 export default function PersonasPage() {
 	return (
-		<div className='min-h-screen bg-background'>
+		<div className='p-6 mx-auto space-y-6 animate-fade-up'>
 			{/* Header */}
-			<header className='bg-background-surface border-b border-border'>
-				<div className='max-w-5xl mx-auto px-6 py-4 flex items-center justify-between'>
-					<div className='flex items-center gap-4'>
-						<Link href='/write'>
-							<Button variant='ghost' size='sm' className='p-2'>
-								<ArrowLeft className='h-4 w-4' />
-							</Button>
-						</Link>
-						<div>
-							<div className='flex items-center gap-2'>
-								<FileText className='h-5 w-5 text-primary' />
-								<span className='font-semibold text-foreground'>Personas</span>
-							</div>
-							<p className='text-sm text-foreground-secondary'>
-								Manage your writing styles
-							</p>
-						</div>
-					</div>
-					<Link href='/personas/new'>
-						<Button>
-							<Plus className='h-4 w-4' />
-							Create Persona
-						</Button>
-					</Link>
+			<div className='flex items-center justify-between'>
+				<div>
+					<h1 className='text-2xl font-bold text-foreground tracking-tight'>
+						Personas
+					</h1>
+					<p className='text-foreground-muted mt-1'>
+						Define your unique writing voices
+					</p>
 				</div>
-			</header>
+				<Link href='/personas/new'>
+					<Button>
+						<Plus className='h-4 w-4' weight='bold' />
+						<span className='ml-1.5'>Create Persona</span>
+					</Button>
+				</Link>
+			</div>
 
-			{/* Content */}
-			<main className='max-w-5xl mx-auto px-6 py-8'>
-				<PersonaList />
-			</main>
+			{/* Persona List */}
+			<PersonaList />
 		</div>
 	);
 }

@@ -2,76 +2,90 @@
 
 /* ============================================
    AI Writer Design System
-   LIGHT Theme with Cream Background
-   Palette: #fff (cream), #810000 (maroon), #630000, #1B1717
+   Premium Light Theme with Warm Cream Background
    ============================================ */
 
 :root {
-	/* Core Palette - LIGHT MODE */
-	--cream: #fff;
+	/* Core Palette */
+	--cream: #fefdfb;
+	--cream-warm: #faf8f5;
 	--maroon: #810000;
 	--maroon-dark: #630000;
 	--charcoal: #1b1717;
 
-	/* Background Colors - Pure Cream Theme */
-	--background: #fff;
-	--background-surface: #fff;
+	/* Background Colors - Warm Cream Theme */
+	--background: #fefdfb;
+	--background-surface: #ffffff;
 	--background-elevated: #ffffff;
-	--background-muted: #fff;
+	--background-muted: #f7f5f2;
+	--background-sidebar: #faf8f5;
 
-	/* Text Colors - Dark text on light background */
+	/* Text Colors */
 	--foreground: #1b1717;
 	--foreground-secondary: #3d3838;
 	--foreground-muted: #6a6565;
 
-	/* Primary - Maroon for primary CTAs */
+	/* Primary - Maroon */
 	--primary: #810000;
 	--primary-hover: #630000;
-	--primary-light: rgba(129, 0, 0, 0.1);
+	--primary-light: rgba(129, 0, 0, 0.08);
 	--primary-foreground: #ffffff;
 
-	/* Secondary - Charcoal for secondary actions */
+	/* Secondary - Charcoal */
 	--secondary: #1b1717;
 	--secondary-hover: #2d2828;
-	--secondary-light: rgba(27, 23, 23, 0.08);
+	--secondary-light: rgba(27, 23, 23, 0.06);
 	--secondary-foreground: #ffffff;
 
-	/* Accent - Maroon dark for highlights */
+	/* Accent */
 	--accent: #630000;
 	--accent-hover: #810000;
-	--accent-light: rgba(99, 0, 0, 0.08);
+	--accent-light: rgba(99, 0, 0, 0.06);
 	--accent-foreground: #ffffff;
 
-	/* Border & Dividers */
-	--border: #c9c5b6;
-	--border-hover: #b5b1a3;
+	/* Border & Dividers - Warmer */
+	--border: #e8e5de;
+	--border-hover: #d8d4cb;
 	--ring: #810000;
 
 	/* Semantic Colors */
-	--success: #16a34a;
-	--success-light: rgba(22, 163, 74, 0.1);
-	--warning: #ea580c;
-	--warning-light: rgba(234, 88, 12, 0.1);
+	--success: #059669;
+	--success-light: rgba(5, 150, 105, 0.1);
+	--warning: #d97706;
+	--warning-light: rgba(217, 119, 6, 0.1);
 	--error: #dc2626;
 	--error-light: rgba(220, 38, 38, 0.1);
 	--info: #0284c7;
 	--info-light: rgba(2, 132, 199, 0.1);
 
-	/* Shadows - Subtle for light theme */
-	--shadow-xs: 0 1px 2px 0 rgb(27 23 23 / 0.05);
-	--shadow-sm: 0 1px 3px 0 rgb(27 23 23 / 0.08),
-		0 1px 2px -1px rgb(27 23 23 / 0.05);
-	--shadow-md: 0 4px 6px -1px rgb(27 23 23 / 0.1),
-		0 2px 4px -2px rgb(27 23 23 / 0.05);
-	--shadow-lg: 0 10px 15px -3px rgb(27 23 23 / 0.1),
-		0 4px 6px -4px rgb(27 23 23 / 0.05);
+	/* Shadows - Premium, subtle */
+	--shadow-xs: 0 1px 2px 0 rgb(27 23 23 / 0.04);
+	--shadow-sm: 0 1px 3px 0 rgb(27 23 23 / 0.06),
+		0 1px 2px -1px rgb(27 23 23 / 0.04);
+	--shadow-md: 0 4px 6px -1px rgb(27 23 23 / 0.08),
+		0 2px 4px -2px rgb(27 23 23 / 0.04);
+	--shadow-lg: 0 10px 15px -3px rgb(27 23 23 / 0.08),
+		0 4px 6px -4px rgb(27 23 23 / 0.04);
+	--shadow-xl: 0 20px 25px -5px rgb(27 23 23 / 0.1),
+		0 8px 10px -6px rgb(27 23 23 / 0.04);
+	--shadow-card: 0 2px 8px -2px rgb(27 23 23 / 0.08),
+		0 0 0 1px rgb(27 23 23 / 0.04);
+	--shadow-card-hover: 0 8px 20px -4px rgb(27 23 23 / 0.12),
+		0 0 0 1px rgb(27 23 23 / 0.06);
 
 	/* Border Radius */
 	--radius-sm: 0.375rem;
 	--radius-md: 0.5rem;
 	--radius-lg: 0.75rem;
 	--radius-xl: 1rem;
+	--radius-2xl: 1.25rem;
 	--radius-full: 9999px;
+
+	/* Transitions */
+	--transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-spring: 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* Tailwind Theme Integration */
@@ -80,7 +94,7 @@
 	--color-background-surface: var(--background-surface);
 	--color-background-elevated: var(--background-elevated);
 	--color-background-muted: var(--background-muted);
-	--color-background-editor: var(--background-editor);
+	--color-background-sidebar: var(--background-sidebar);
 
 	--color-foreground: var(--foreground);
 	--color-foreground-secondary: var(--foreground-secondary);
@@ -137,7 +151,7 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 }
 
-/* Focus Styles */
+/* Better focus styles */
 *:focus-visible {
 	outline: 2px solid var(--ring);
 	outline-offset: 2px;
@@ -149,10 +163,10 @@ body {
 	color: var(--primary-foreground);
 }
 
-/* Scrollbar Styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
-	width: 6px;
-	height: 6px;
+	width: 8px;
+	height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -162,18 +176,14 @@ body {
 ::-webkit-scrollbar-thumb {
 	background: var(--border);
 	border-radius: var(--radius-full);
+	transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
 	background: var(--border-hover);
 }
 
-/* Editor Container */
-.editor-container {
-	/* No background styling - uses page background */
-}
-
-/* Editor Styles */
+/* Editor */
 .editor-content {
 	font-family: var(--font-serif);
 	font-size: 1.125rem;
@@ -189,13 +199,27 @@ body {
 	color: var(--foreground-muted);
 }
 
-/* Animation Utilities */
+/* ============================================
+   Animation Keyframes
+   ============================================ */
+
 @keyframes fadeIn {
 	from {
 		opacity: 0;
 	}
 	to {
 		opacity: 1;
+	}
+}
+
+@keyframes fadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
 	}
 }
 
@@ -210,6 +234,28 @@ body {
 	}
 }
 
+@keyframes slideInLeft {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes scaleIn {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
 @keyframes pulse {
 	0%,
 	100% {
@@ -220,14 +266,110 @@ body {
 	}
 }
 
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Animation Utilities */
 .animate-fade-in {
-	animation: fadeIn 0.2s ease-out;
+	animation: fadeIn var(--transition-base) ease-out;
+}
+
+.animate-fade-up {
+	animation: fadeUp var(--transition-slow) ease-out;
 }
 
 .animate-slide-in-right {
-	animation: slideInRight 0.25s ease-out;
+	animation: slideInRight var(--transition-slow) ease-out;
+}
+
+.animate-slide-in-left {
+	animation: slideInLeft var(--transition-slow) ease-out;
+}
+
+.animate-scale-in {
+	animation: scaleIn var(--transition-base) ease-out;
 }
 
 .animate-pulse {
 	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+	animation: spin 1s linear infinite;
+}
+
+/* Skeleton loading shimmer */
+.skeleton {
+	background: linear-gradient(
+		90deg,
+		var(--background-muted) 25%,
+		var(--background-elevated) 50%,
+		var(--background-muted) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+}
+
+/* ============================================
+   Transition Utilities
+   ============================================ */
+
+.transition-colors {
+	transition: color var(--transition-fast),
+		background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.transition-transform {
+	transition: transform var(--transition-fast);
+}
+
+.transition-shadow {
+	transition: box-shadow var(--transition-base);
+}
+
+.transition-all {
+	transition: all var(--transition-base);
+}
+
+/* Hover lift effect */
+.hover-lift {
+	transition: transform var(--transition-base),
+		box-shadow var(--transition-base);
+}
+
+.hover-lift:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-card-hover);
+}
+
+/* Press effect */
+.press-effect:active {
+	transform: scale(0.98);
+}
+
+/* Card hover effect */
+.card-interactive {
+	transition: box-shadow var(--transition-base),
+		transform var(--transition-base);
+	box-shadow: var(--shadow-card);
+}
+
+.card-interactive:hover {
+	box-shadow: var(--shadow-card-hover);
+	transform: translateY(-1px);
 }

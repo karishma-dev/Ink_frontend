@@ -33,7 +33,7 @@ export default function EditPersonaPage({ params }: EditPersonaPageProps) {
 	}
 
 	return (
-		<div className='p-6 max-w-3xl mx-auto'>
+		<div className='p-6 mx-auto'>
 			<div className='mb-6'>
 				<h1 className='text-2xl font-bold text-foreground'>Edit Persona</h1>
 				<p className='text-foreground-secondary mt-1'>

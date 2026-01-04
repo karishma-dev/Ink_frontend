@@ -1,12 +1,12 @@
 "use client";
 
 import { ReactNode } from "react";
+import { MainLayout } from "@/components/layout";
 
 interface MainAppLayoutProps {
 	children: ReactNode;
 }
 
 export default function MainAppLayout({ children }: MainAppLayoutProps) {
-	// Simple pass-through layout - the write page handles its own layout
-	return <>{children}</>;
+	return <MainLayout>{children}</MainLayout>;
 }

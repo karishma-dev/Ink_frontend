@@ -2,62 +2,127 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-	Send,
-	Upload,
-	History,
-	ChevronDown,
-	ChevronRight,
+	PaperPlaneRight,
 	User,
-	Bot,
+	Robot,
+	Paperclip,
 	FileText,
 	X,
-	Plus,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui";
-import { useSendMessage } from "@/features/chat/hooks/useSendMessage";
-import { useChats } from "@/features/chat/hooks/useChats";
 import { usePersonas } from "@/features/personas/hooks/usePersonas";
 import { Persona } from "@/features/personas/types";
+import { sendChatMessageStream } from "@/services/chatService";
+import { useAppDispatch } from "@/store/hooks";
+import { setPendingEdits } from "@/store/editorSlice";
+import { listDocumentsService } from "@/services/documentService";
 
 interface Message {
 	id: string;
 	content: string;
 	role: "user" | "assistant";
-	isLoading?: boolean;
+	isStreaming?: boolean;
 }
 
 interface ChatSidebarProps {
 	isOpen: boolean;
 	onToggle: () => void;
 	onUploadClick: () => void;
+	draftContent?: string;
+	selection?: { start: number; end: number; text: string } | null;
 }
 
 export function ChatSidebar({
 	isOpen,
 	onToggle,
 	onUploadClick,
+	draftContent,
+	selection,
 }: ChatSidebarProps) {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState("");
 	const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
-	const [showPersonaDropdown, setShowPersonaDropdown] = useState(false);
-	const [showHistory, setShowHistory] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [showMentions, setShowMentions] = useState(false);
+	const [mentionQuery, setMentionQuery] = useState("");
+	const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
+	const [availableDocs, setAvailableDocs] = useState<any[]>([]);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
-	const sendMessage = useSendMessage();
+	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const { data: personasData } = usePersonas();
-	const { data: chatsData } = useChats();
+	const dispatch = useAppDispatch();
 
 	const personas = personasData?.personas || [];
-	const chatHistory = chatsData?.chats || [];
+
+	// Fetch documents for @ mentions
+	useEffect(() => {
+		const fetchDocs = async () => {
+			const res = await listDocumentsService();
+			if (res.success && res.data) {
+				setAvailableDocs(res.data.documents);
+			}
+		};
+		fetchDocs();
+	}, []);
+
+	// Filter documents based on @ query
+	const filteredDocs = availableDocs.filter((doc) =>
+		doc.filename.toLowerCase().includes(mentionQuery.toLowerCase())
+	);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [messages]);
 
+	// Auto-resize textarea
+	useEffect(() => {
+		if (inputRef.current) {
+			inputRef.current.style.height = "auto";
+			inputRef.current.style.height = `${Math.min(
+				inputRef.current.scrollHeight,
+				120
+			)}px`;
+		}
+	}, [input]);
+
+	// Handle @ mentions
+	const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+		const value = e.target.value;
+		setInput(value);
+
+		const cursorPos = e.target.selectionStart;
+		const textBeforeCursor = value.slice(0, cursorPos);
+		const atMatch = textBeforeCursor.match(/@(\w*)$/);
+
+		if (atMatch) {
+			setShowMentions(true);
+			setMentionQuery(atMatch[1]);
+		} else {
+			setShowMentions(false);
+			setMentionQuery("");
+		}
+	};
+
+	const insertMention = (doc: { id: number; filename: string }) => {
+		const cursorPos = inputRef.current?.selectionStart || input.length;
+		const textBeforeCursor = input.slice(0, cursorPos);
+		const textAfterCursor = input.slice(cursorPos);
+
+		const newText =
+			textBeforeCursor.replace(/@\w*$/, `@${doc.filename} `) + textAfterCursor;
+		setInput(newText);
+		setSelectedDocuments((prev) => [...prev, doc.id]);
+		setShowMentions(false);
+		inputRef.current?.focus();
+	};
+
+	const removeDocument = (docId: number) => {
+		setSelectedDocuments((prev) => prev.filter((id) => id !== docId));
+	};
+
 	const handleSend = async () => {
-		if (!input.trim() || sendMessage.isPending) return;
+		if (!input.trim() || isLoading) return;
 
 		const userMessage: Message = {
 			id: `user-${Date.now()}`,
@@ -66,264 +131,230 @@ export function ChatSidebar({
 		};
 		setMessages((prev) => [...prev, userMessage]);
 		setInput("");
+		setSelectedDocuments([]);
+		setIsLoading(true);
 
-		const loadingId = `loading-${Date.now()}`;
+		const assistantId = `assistant-${Date.now()}`;
 		setMessages((prev) => [
 			...prev,
-			{ id: loadingId, content: "", role: "assistant", isLoading: true },
+			{ id: assistantId, content: "", role: "assistant", isStreaming: true },
 		]);
 
 		try {
-			const response = await sendMessage.mutateAsync({
+			const stream = sendChatMessageStream({
 				message: input.trim(),
 				persona_id: selectedPersona?.id || null,
+				draft_content: draftContent,
+				document_ids: selectedDocuments,
+				selection: selection || undefined,
 			});
 
+			let fullContent = "";
+
+			for await (const event of stream) {
+				if (event.type === "content" && event.content) {
+					fullContent += event.content;
+					setMessages((prev) =>
+						prev.map((m) =>
+							m.id === assistantId ? { ...m, content: fullContent } : m
+						)
+					);
+				} else if (event.type === "edits" && event.edits) {
+					dispatch(setPendingEdits(event.edits));
+				} else if (event.type === "done") {
+					setMessages((prev) =>
+						prev.map((m) =>
+							m.id === assistantId ? { ...m, isStreaming: false } : m
+						)
+					);
+				}
+			}
+		} catch (error) {
+			console.error("Chat error:", error);
 			setMessages((prev) =>
 				prev.map((m) =>
-					m.id === loadingId
+					m.id === assistantId
 						? {
-								id: `ai-${Date.now()}`,
-								content: response.response,
-								role: "assistant",
+								...m,
+								content: "Sorry, something went wrong.",
+								isStreaming: false,
 						  }
 						: m
 				)
 			);
-		} catch {
-			setMessages((prev) => prev.filter((m) => m.id !== loadingId));
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
-	const startNewChat = () => {
-		setMessages([]);
-		setShowHistory(false);
-	};
-
-	if (!isOpen) {
-		return (
-			<button
-				onClick={onToggle}
-				className='fixed right-0 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground p-2 rounded-l-lg shadow-md hover:bg-primary-hover transition-colors'
-				aria-label='Open chat'
-			>
-				<ChevronRight className='h-5 w-5 rotate-180' />
-			</button>
-		);
-	}
+	if (!isOpen) return null;
 
 	return (
-		<aside className='w-80 h-full bg-background-surface border-l border-border flex flex-col animate-slide-in-right'>
+		<div className='flex flex-col h-full bg-background border-l border-border animate-slide-in'>
 			{/* Header */}
-			<div className='p-3 border-b border-border flex items-center justify-between'>
-				<span className='font-semibold text-foreground'>AI Assistant</span>
+			<div className='p-4 flex items-center justify-between'>
+				<h3 className='font-semibold text-foreground'>AI Assistant</h3>
 				<button
 					onClick={onToggle}
-					className='p-1 rounded hover:bg-background-muted transition-colors'
-					aria-label='Close sidebar'
+					className='p-1.5 rounded-lg hover:bg-background-muted transition-colors'
 				>
-					<ChevronRight className='h-4 w-4' />
+					<X className='h-4 w-4 text-foreground-muted' />
 				</button>
 			</div>
 
-			{/* Toolbar */}
-			<div className='p-2 border-b border-border space-y-2'>
-				{/* Persona Selector */}
-				<div className='relative'>
-					<button
-						onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
-						className='w-full flex items-center justify-between px-3 py-2 rounded-lg bg-background hover:bg-background-muted border border-border transition-colors text-sm'
-					>
-						<div className='flex items-center gap-2'>
-							<User className='h-4 w-4 text-foreground-muted' />
-							<span className='text-foreground truncate'>
-								{selectedPersona?.name || "No persona selected"}
-							</span>
-						</div>
-						<ChevronDown
-							className={cn(
-								"h-4 w-4 text-foreground-muted transition-transform",
-								showPersonaDropdown && "rotate-180"
-							)}
-						/>
-					</button>
-
-					{showPersonaDropdown && (
-						<div className='absolute top-full left-0 right-0 mt-1 bg-background-surface border border-border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto'>
-							<button
-								onClick={() => {
-									setSelectedPersona(null);
-									setShowPersonaDropdown(false);
-								}}
-								className={cn(
-									"w-full text-left px-3 py-2 text-sm hover:bg-background-muted transition-colors",
-									!selectedPersona && "text-primary font-medium"
-								)}
-							>
-								No persona (default)
-							</button>
-							{personas.map((p) => (
-								<button
-									key={p.id}
-									onClick={() => {
-										setSelectedPersona(p);
-										setShowPersonaDropdown(false);
-									}}
-									className={cn(
-										"w-full text-left px-3 py-2 text-sm hover:bg-background-muted transition-colors",
-										selectedPersona?.id === p.id && "text-primary font-medium"
-									)}
-								>
-									{p.name}
-								</button>
-							))}
-						</div>
-					)}
-				</div>
-
-				{/* Action Buttons */}
-				<div className='flex gap-2'>
-					<button
-						onClick={onUploadClick}
-						className='flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-background hover:bg-background-muted border border-border transition-colors text-sm text-foreground'
-					>
-						<Upload className='h-4 w-4' />
-						<span>Upload</span>
-					</button>
-					<button
-						onClick={() => setShowHistory(!showHistory)}
-						className={cn(
-							"flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border transition-colors text-sm",
-							showHistory
-								? "bg-primary text-primary-foreground border-primary"
-								: "bg-background hover:bg-background-muted border-border text-foreground"
-						)}
-					>
-						<History className='h-4 w-4' />
-						<span>History</span>
-					</button>
-				</div>
+			{/* Messages */}
+			<div className='flex-1 overflow-y-auto p-4 space-y-4'>
+				{messages.length === 0 ? (
+					<EmptyState />
+				) : (
+					messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+				)}
+				<div ref={messagesEndRef} />
 			</div>
 
-			{/* Content Area - Either History or Chat */}
-			{showHistory ? (
-				<div className='flex-1 overflow-y-auto p-2'>
-					<div className='flex items-center justify-between mb-2 px-2'>
-						<span className='text-xs font-medium text-foreground-muted uppercase'>
-							Recent Chats
-						</span>
-						<button
-							onClick={startNewChat}
-							className='text-xs text-primary hover:underline flex items-center gap-1'
-						>
-							<Plus className='h-3 w-3' />
-							New
-						</button>
-					</div>
-					{chatHistory.length === 0 ? (
-						<p className='text-sm text-foreground-muted text-center py-4'>
-							No chat history yet
-						</p>
-					) : (
-						<div className='space-y-1'>
-							{chatHistory.slice(0, 10).map((chat) => (
-								<button
-									key={chat.id}
-									onClick={() => setShowHistory(false)}
-									className='w-full text-left p-2 rounded-lg hover:bg-background-muted transition-colors'
+			{/* Input Area */}
+			<div className='border-t border-border bg-background-surface'>
+				{selectedDocuments.length > 0 && (
+					<div className='flex flex-wrap gap-2 mb-3'>
+						{selectedDocuments.map((docId) => {
+							const doc = availableDocs.find((d) => d.id === docId);
+							return doc ? (
+								<span
+									key={docId}
+									className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-light text-primary text-xs font-medium'
 								>
-									<p className='text-sm font-medium text-foreground truncate'>
-										{chat.title || "Untitled"}
-									</p>
-									<p className='text-xs text-foreground-muted truncate'>
-										{chat.last_message}
-									</p>
-								</button>
-							))}
+									<FileText className='h-3.5 w-3.5' weight='duotone' />
+									{doc.filename}
+									<button
+										onClick={() => removeDocument(docId)}
+										className='hover:text-primary-hover'
+									>
+										<X className='h-3 w-3' />
+									</button>
+								</span>
+							) : null;
+						})}
+					</div>
+				)}
+
+				<div className='relative'>
+					{showMentions && filteredDocs.length > 0 && (
+						<div className='absolute bottom-full left-0 right-0 mb-2 bg-background-surface border border-border rounded-xl shadow-lg overflow-hidden animate-scale-in z-50'>
+							<div className='p-2 border-b border-border bg-background-muted'>
+								<span className='text-xs font-medium text-foreground-muted'>
+									Documents
+								</span>
+							</div>
+							<div className='max-h-40 overflow-y-auto'>
+								{filteredDocs.map((doc) => (
+									<button
+										key={doc.id}
+										onClick={() => insertMention(doc)}
+										className='w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-background transition-colors text-left'
+									>
+										<FileText
+											className='h-4 w-4 text-foreground-muted'
+											weight='duotone'
+										/>
+										{doc.filename}
+									</button>
+								))}
+							</div>
 						</div>
 					)}
-				</div>
-			) : (
-				<>
-					{/* Messages */}
-					<div className='flex-1 overflow-y-auto p-3 space-y-3'>
-						{messages.length === 0 ? (
-							<div className='text-center text-foreground-muted text-sm py-8'>
-								<Bot className='h-10 w-10 mx-auto mb-3 opacity-40' />
-								<p className='font-medium'>How can I help?</p>
-								<p className='text-xs mt-1'>
-									Ask me to brainstorm, edit, or expand your writing.
-								</p>
-							</div>
-						) : (
-							messages.map((msg) => (
-								<div
-									key={msg.id}
-									className={cn(
-										"flex gap-2",
-										msg.role === "user" && "flex-row-reverse"
-									)}
-								>
-									<div
-										className={cn(
-											"w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-											msg.role === "user" ? "bg-primary" : "bg-background-muted"
-										)}
-									>
-										{msg.role === "user" ? (
-											<User className='h-3 w-3 text-primary-foreground' />
-										) : (
-											<Bot className='h-3 w-3 text-foreground-muted' />
-										)}
-									</div>
-									<div
-										className={cn(
-											"max-w-[85%] px-3 py-2 rounded-lg text-sm",
-											msg.role === "user"
-												? "bg-primary text-primary-foreground rounded-tr-sm"
-												: "bg-background-muted text-foreground rounded-tl-sm"
-										)}
-									>
-										{msg.isLoading ? (
-											<div className='flex gap-1 py-1'>
-												<span className='w-1.5 h-1.5 rounded-full bg-foreground-muted animate-pulse' />
-												<span className='w-1.5 h-1.5 rounded-full bg-foreground-muted animate-pulse [animation-delay:150ms]' />
-												<span className='w-1.5 h-1.5 rounded-full bg-foreground-muted animate-pulse [animation-delay:300ms]' />
-											</div>
-										) : (
-											<p className='whitespace-pre-wrap'>{msg.content}</p>
-										)}
-									</div>
-								</div>
-							))
-						)}
-						<div ref={messagesEndRef} />
-					</div>
 
-					{/* Input */}
-					<div className='p-3 border-t border-border'>
-						<div className='flex gap-2'>
-							<input
-								value={input}
-								onChange={(e) => setInput(e.target.value)}
-								onKeyDown={(e) =>
-									e.key === "Enter" && !e.shiftKey && handleSend()
+					<div className='flex items-start gap-2 p-2 rounded-xl bg-background-muted border border-transparent focus-within:bg-background transition-all min-h-24'>
+						<button
+							onClick={onUploadClick}
+							className='p-2 rounded-lg text-foreground-muted hover:text-foreground hover:bg-background transition-colors flex-shrink-0'
+							title='Attach document'
+						>
+							<Paperclip className='h-5 w-5' />
+						</button>
+
+						<textarea
+							ref={inputRef}
+							value={input}
+							onChange={handleInputChange}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && !e.shiftKey && !showMentions) {
+									e.preventDefault();
+									handleSend();
 								}
-								placeholder='Ask anything...'
-								className='flex-1 h-9 px-3 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary'
-							/>
-							<Button
-								onClick={handleSend}
-								disabled={!input.trim() || sendMessage.isPending}
-								size='sm'
-								className='px-3'
-							>
-								<Send className='h-4 w-4' />
-							</Button>
-						</div>
+								if (e.key === "Escape" && showMentions) setShowMentions(false);
+							}}
+							placeholder='Ask anything... (@ to mention docs)'
+							rows={1}
+							className='mt-2 flex-1 bg-transparent text-foreground text-sm placeholder:text-foreground-muted focus:outline-none resize-none'
+						/>
+
+						<button
+							onClick={handleSend}
+							disabled={!input.trim() || isLoading}
+							className={cn(
+								"p-2 rounded-lg transition-all flex-shrink-0",
+								input.trim() && !isLoading
+									? "bg-primary text-primary-foreground hover:bg-primary-hover"
+									: "text-foreground-muted cursor-not-allowed"
+							)}
+						>
+							<PaperPlaneRight className='h-5 w-5' weight='fill' />
+						</button>
 					</div>
-				</>
-			)}
-		</aside>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function EmptyState() {
+	return (
+		<div className='flex flex-col items-center justify-center h-full text-center px-4'>
+			<div className='w-14 h-14 rounded-2xl bg-primary-light flex items-center justify-center mb-4'>
+				<Robot className='h-7 w-7 text-primary' weight='duotone' />
+			</div>
+			<h3 className='font-semibold text-foreground mb-1'>How can I help?</h3>
+			<p className='text-sm text-foreground-muted'>
+				Ask me to brainstorm, edit, or improve your writing.
+			</p>
+		</div>
+	);
+}
+
+function MessageBubble({ message }: { message: Message }) {
+	const isUser = message.role === "user";
+	return (
+		<div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
+			<div
+				className={cn(
+					"w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+					isUser ? "bg-primary" : "bg-secondary-light"
+				)}
+			>
+				{isUser ? (
+					<User className='h-4 w-4 text-primary-foreground' weight='fill' />
+				) : (
+					<Robot className='h-4 w-4 text-foreground' weight='duotone' />
+				)}
+			</div>
+			<div
+				className={cn(
+					"max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed",
+					isUser
+						? "bg-primary text-primary-foreground rounded-tr-sm"
+						: "bg-background-muted text-foreground rounded-tl-sm"
+				)}
+			>
+				{message.isStreaming && !message.content ? (
+					<div className='flex gap-1.5 py-1'>
+						<span className='w-1.5 h-1.5 rounded-full bg-current opacity-40 animate-pulse' />
+						<span className='w-1.5 h-1.5 rounded-full bg-current opacity-40 animate-pulse [animation-delay:200ms]' />
+						<span className='w-1.5 h-1.5 rounded-full bg-current opacity-40 animate-pulse [animation-delay:400ms]' />
+					</div>
+				) : (
+					<p className='whitespace-pre-wrap'>{message.content}</p>
+				)}
+			</div>
+		</div>
 	);
 }

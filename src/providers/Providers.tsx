@@ -19,12 +19,17 @@ interface ProvidersProps {
 	children: ReactNode;
 }
 
+import { Provider } from "react-redux";
+import store from "@/store";
+
 export function Providers({ children }: ProvidersProps) {
 	return (
-		<QueryClientProvider client={queryClient}>
-			<AuthProvider>
-				<ToastProvider>{children}</ToastProvider>
-			</AuthProvider>
-		</QueryClientProvider>
+		<Provider store={store}>
+			<QueryClientProvider client={queryClient}>
+				<AuthProvider>
+					<ToastProvider>{children}</ToastProvider>
+				</AuthProvider>
+			</QueryClientProvider>
+		</Provider>
 	);
 }
