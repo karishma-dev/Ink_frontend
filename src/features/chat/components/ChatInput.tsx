@@ -76,7 +76,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
 								>
 									No persona (default)
 								</button>
-								{personas.map((persona) => (
+								{personas.map((persona: Persona) => (
 									<button
 										key={persona.id}
 										type='button'

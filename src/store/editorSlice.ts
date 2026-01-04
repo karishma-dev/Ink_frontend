@@ -59,18 +59,39 @@ const editorSlice = createSlice({
 			const index = action.payload;
 			const edit = state.pendingEdits[index];
 			if (edit) {
-				const before = state.content.slice(0, edit.start);
-				const after = state.content.slice(edit.end);
+				// Don't trust AI positions - find the original text by string search
+				let actualStart = edit.start;
+				let actualEnd = edit.end;
+
+				if (edit.original) {
+					// Search for the original text near the suggested position
+					const searchWindow = 50; // Look within 50 chars of suggested position
+					const searchStart = Math.max(0, edit.start - searchWindow);
+					const searchEnd = Math.min(
+						state.content.length,
+						edit.end + searchWindow
+					);
+					const searchArea = state.content.slice(searchStart, searchEnd);
+
+					const foundIndex = searchArea.indexOf(edit.original);
+					if (foundIndex !== -1) {
+						actualStart = searchStart + foundIndex;
+						actualEnd = actualStart + edit.original.length;
+					}
+				}
+
+				const before = state.content.slice(0, actualStart);
+				const after = state.content.slice(actualEnd);
 				state.content = before + edit.replacement + after;
 
-				const diff = edit.replacement.length - (edit.end - edit.start);
+				const diff = edit.replacement.length - (actualEnd - actualStart);
 
 				// Remove the applied edit
 				state.pendingEdits.splice(index, 1);
 
 				// Shift remaining edits' offsets if they are after the current edit
 				state.pendingEdits.forEach((otherEdit) => {
-					if (otherEdit.start >= edit.end) {
+					if (otherEdit.start >= actualEnd) {
 						otherEdit.start += diff;
 						otherEdit.end += diff;
 					}
@@ -79,14 +100,37 @@ const editorSlice = createSlice({
 		},
 		applyAllEdits: (state) => {
 			// Sort edits from last to first so that earlier offsets remain stable
+			// when using position-based search
 			const sortedEdits = [...state.pendingEdits].sort(
 				(a, b) => b.start - a.start
 			);
 
 			sortedEdits.forEach((edit) => {
-				const before = state.content.slice(0, edit.start);
-				const after = state.content.slice(edit.end);
-				state.content = before + edit.replacement + after;
+				if (edit.original) {
+					// Search near AI's suggested position (handles duplicate words)
+					const searchWindow = 50;
+					const searchStart = Math.max(0, edit.start - searchWindow);
+					const searchEnd = Math.min(
+						state.content.length,
+						edit.end + searchWindow
+					);
+					const searchArea = state.content.slice(searchStart, searchEnd);
+
+					const foundIndex = searchArea.indexOf(edit.original);
+					if (foundIndex !== -1) {
+						const actualStart = searchStart + foundIndex;
+						const before = state.content.slice(0, actualStart);
+						const after = state.content.slice(
+							actualStart + edit.original.length
+						);
+						state.content = before + edit.replacement + after;
+					}
+				} else {
+					// Fallback to position-based if no original text
+					const before = state.content.slice(0, edit.start);
+					const after = state.content.slice(edit.end);
+					state.content = before + edit.replacement + after;
+				}
 			});
 
 			state.pendingEdits = [];

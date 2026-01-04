@@ -137,14 +137,14 @@ export default function DraftsPage() {
 									{draft.content || "No content yet..."}
 								</p>
 								<div className='flex items-center gap-4 mt-4'>
-									<div className='flex items-center gap-1.5 text-xs text-foreground-muted font-semibold bg-background rounded-lg px-2 py-1'>
+									<div className='flex items-center gap-1.5 text-xs text-foreground-muted font-semibold bg-background rounded-lg'>
 										<Clock className='h-4 w-4' weight='duotone' />
 										<span>{formatRelativeTime(draft.updated_at)}</span>
 									</div>
 								</div>
 							</div>
 
-							<div className='flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0'>
+							<div className='flex gap-2 transition-all'>
 								<Link href={`/write?id=${draft.id}`}>
 									<Button
 										variant='ghost'

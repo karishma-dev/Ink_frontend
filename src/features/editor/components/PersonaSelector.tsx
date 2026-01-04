@@ -54,7 +54,7 @@ export function PersonaSelector({
 						>
 							No persona (default voice)
 						</button>
-						{personas.map((persona) => (
+						{personas.map((persona: Persona) => (
 							<button
 								key={persona.id}
 								onClick={() => {

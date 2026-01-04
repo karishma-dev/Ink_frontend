@@ -4,6 +4,7 @@ import { Users } from "@phosphor-icons/react";
 import { usePersonas, useDeletePersona } from "../hooks/usePersonas";
 import { PersonaCard } from "./PersonaCard";
 import { useToast } from "@/components/ui";
+import { Persona } from "../types";
 
 export function PersonaList() {
 	const { data, isLoading, error } = usePersonas();
@@ -41,7 +42,7 @@ export function PersonaList() {
 
 	return (
 		<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-			{data.personas.map((persona, index) => (
+			{data.personas.map((persona: Persona, index: number) => (
 				<div
 					key={persona.id}
 					style={{ animationDelay: `${index * 50}ms` }}

@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import {
+	useState,
+	useMemo,
+	useEffect,
+	useRef,
+	useCallback,
+	Suspense,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import { FloppyDisk, DownloadSimple, ChatCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui";
+import { parseDate } from "@/lib/utils";
 import { Editor, EditorStats, calculateStats } from "@/features/editor";
 import { ChatSidebar } from "@/features/editor/components/ChatSidebar";
 import { UploadModal } from "@/features/editor/components/UploadModal";
@@ -21,10 +29,31 @@ import {
 } from "@/services/draftService";
 import { useCollaboration } from "@/features/collaboration/hooks/useCollaboration";
 import { useDraft } from "@/features/drafts/hooks/useDrafts";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function WritePage() {
+	return (
+		<Suspense
+			fallback={
+				<div className='h-full flex items-center justify-center bg-[#FEFEFA]'>
+					<div className='flex flex-col items-center gap-4'>
+						<div className='w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin' />
+						<p className='text-foreground-muted font-medium animate-pulse'>
+							Loading editor...
+						</p>
+					</div>
+				</div>
+			}
+		>
+			<WritePageContent />
+		</Suspense>
+	);
+}
+
+function WritePageContent() {
 	const searchParams = useSearchParams();
 	const initialDraftId = searchParams.get("id");
+	const queryClient = useQueryClient();
 
 	const dispatch = useAppDispatch();
 	const { content, title, isSaving, lastSaved, presence } = useAppSelector(
@@ -52,6 +81,9 @@ export default function WritePage() {
 	}, [draftData, dispatch]);
 
 	const handleSave = async () => {
+		// Don't save if content is empty
+		if (!content.trim()) return;
+
 		dispatch(setSaving(true));
 
 		let res;
@@ -66,10 +98,69 @@ export default function WritePage() {
 
 		if (res.success) {
 			dispatch(setLastSaved(new Date().toISOString()));
+			// Invalidate drafts list so it refreshes when navigating back
+			queryClient.invalidateQueries({ queryKey: ["drafts"] });
 		}
 
 		dispatch(setSaving(false));
 	};
+
+	// Auto-save after 2 seconds of no changes
+	const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const lastSavedContentRef = useRef<string>("");
+	const lastSavedTitleRef = useRef<string>("");
+
+	useEffect(() => {
+		// Skip if content hasn't changed or if it's the initial load
+		if (
+			content === lastSavedContentRef.current &&
+			title === lastSavedTitleRef.current
+		) {
+			return;
+		}
+
+		// Skip auto-save if content is empty (whitespace only doesn't count)
+		if (!content.trim()) return;
+
+		// Clear existing timeout
+		if (autoSaveTimeoutRef.current) {
+			clearTimeout(autoSaveTimeoutRef.current);
+		}
+
+		// Set new timeout for auto-save
+		autoSaveTimeoutRef.current = setTimeout(async () => {
+			// Don't auto-save if already saving
+			if (isSaving) return;
+
+			dispatch(setSaving(true));
+
+			let res;
+			if (draftId) {
+				res = await updateDraftService(draftId, { title, content });
+			} else {
+				res = await createDraftService({ title: title || "Untitled", content });
+				if (res.success && res.data) {
+					setDraftId(res.data.id);
+				}
+			}
+
+			if (res?.success) {
+				dispatch(setLastSaved(new Date().toISOString()));
+				lastSavedContentRef.current = content;
+				lastSavedTitleRef.current = title;
+				// Invalidate drafts list so it refreshes when navigating back
+				queryClient.invalidateQueries({ queryKey: ["drafts"] });
+			}
+
+			dispatch(setSaving(false));
+		}, 5000); // 5 second debounce
+
+		return () => {
+			if (autoSaveTimeoutRef.current) {
+				clearTimeout(autoSaveTimeoutRef.current);
+			}
+		};
+	}, [content, title, draftId, isSaving, dispatch, queryClient]);
 
 	const handleExport = () => {
 		const blob = new Blob([`# ${title}\n\n${content}`], {
@@ -110,7 +201,7 @@ export default function WritePage() {
 					/>
 					{lastSaved && (
 						<span className='text-xs text-foreground-muted italic'>
-							Saved at {new Date(lastSaved).toLocaleTimeString()}
+							Saved at {parseDate(lastSaved).toLocaleTimeString()}
 						</span>
 					)}
 				</div>

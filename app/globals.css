@@ -199,6 +199,40 @@ body {
 	color: var(--foreground-muted);
 }
 
+/* TipTap Editor Styles */
+.tiptap {
+	outline: none;
+}
+
+.tiptap p {
+	margin: 0;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+	content: attr(data-placeholder);
+	float: left;
+	color: var(--foreground-muted);
+	pointer-events: none;
+	height: 0;
+}
+
+/* Ghost Text for Autocomplete */
+.ghost-text {
+	opacity: 0.5;
+	color: var(--foreground-muted);
+	pointer-events: none;
+	user-select: none;
+}
+
+/* Prose styling for TipTap */
+.prose {
+	color: var(--foreground);
+}
+
+.prose p {
+	margin-bottom: 1em;
+}
+
 /* ============================================
    Animation Keyframes
    ============================================ */

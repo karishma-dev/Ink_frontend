@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useEffect, useCallback, useRef } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import { cn } from "@/lib/utils";
 import { useAutocomplete } from "../hooks/useAutocomplete";
 import { useAppSelector } from "@/store/hooks";
+import { GhostText, setSuggestion } from "../extensions/GhostText";
 
 interface EditorProps {
 	value: string;
@@ -16,90 +20,160 @@ interface EditorProps {
 export function Editor({
 	value,
 	onChange,
-	placeholder,
+	placeholder = "Start writing...",
 	personaId,
 	onCursorChange,
 }: EditorProps) {
-	const editorRef = useRef<HTMLTextAreaElement>(null);
 	const { suggestion, fetchSuggestion, clearSuggestion } = useAutocomplete();
-	const [cursorPos, setCursorPos] = useState(0);
 	const { presence } = useAppSelector((state) => state.editor);
+	const lastContent = useRef(value);
+	const isUpdatingFromProps = useRef(false);
 
-	// Handle autocomplete on Tab
-	const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Tab" && suggestion) {
-			e.preventDefault();
-			const before = value.slice(0, cursorPos);
-			const after = value.slice(cursorPos);
-			const newContent = before + suggestion + after;
-			const newPos = cursorPos + suggestion.length;
+	const editor = useEditor({
+		immediatelyRender: false, // Prevent SSR hydration mismatch
+		extensions: [
+			StarterKit.configure({
+				// Disable some features for a cleaner writing experience
+				heading: false,
+				bulletList: false,
+				orderedList: false,
+				blockquote: false,
+				codeBlock: false,
+				horizontalRule: false,
+			}),
+			Placeholder.configure({
+				placeholder,
+				emptyEditorClass: "is-editor-empty",
+			}),
+			GhostText,
+		],
+		content: value,
+		editorProps: {
+			attributes: {
+				class: cn(
+					"w-full min-h-[500px] p-8 bg-transparent",
+					"editor-content focus:outline-none",
+					"prose prose-lg max-w-none"
+				),
+				spellcheck: "true",
+			},
+			handleKeyDown: (view, event) => {
+				// Accept suggestion on Tab
+				if (event.key === "Tab" && suggestion) {
+					event.preventDefault();
+					const { state } = view;
+					const { from } = state.selection;
 
-			onChange(newContent, newPos);
+					// Insert the suggestion at cursor
+					view.dispatch(state.tr.insertText(suggestion, from));
 
-			setTimeout(() => {
-				if (editorRef.current) {
-					editorRef.current.setSelectionRange(newPos, newPos);
+					clearSuggestion();
+					return true;
 				}
-			}, 0);
 
-			clearSuggestion();
-		} else if (e.key === "Escape") {
-			clearSuggestion();
-		}
-	};
+				// Clear suggestion on Escape
+				if (event.key === "Escape" && suggestion) {
+					clearSuggestion();
+					return true;
+				}
 
-	// Trigger autocomplete after typing pause
+				return false;
+			},
+		},
+		onUpdate: ({ editor }) => {
+			if (isUpdatingFromProps.current) return;
+
+			const text = editor.getText();
+			const cursorPos = editor.state.selection.$head.pos;
+
+			lastContent.current = text;
+			onChange(text, cursorPos);
+			onCursorChange?.(cursorPos);
+
+			// Clear suggestion when user types
+			if (suggestion) {
+				clearSuggestion();
+			}
+		},
+		onSelectionUpdate: ({ editor }) => {
+			const cursorPos = editor.state.selection.$head.pos;
+			onCursorChange?.(cursorPos);
+		},
+	});
+
+	// Update ghost text when suggestion changes
 	useEffect(() => {
+		setSuggestion(suggestion);
+		if (editor) {
+			// Force view update to show/hide ghost text
+			editor.view.dispatch(editor.state.tr);
+		}
+	}, [editor, suggestion]);
+
+	// Sync content from props (for external updates like AI edits)
+	useEffect(() => {
+		if (editor && value !== lastContent.current) {
+			isUpdatingFromProps.current = true;
+
+			// Save cursor position
+			const { from } = editor.state.selection;
+
+			// Update content
+			editor.commands.setContent(value, { emitUpdate: false });
+
+			// Try to restore cursor position
+			const newPos = Math.min(from, editor.state.doc.content.size);
+			editor.commands.setTextSelection(newPos);
+
+			lastContent.current = value;
+			isUpdatingFromProps.current = false;
+		}
+	}, [editor, value]);
+
+	// Track last content for meaningful change detection
+	const lastAutocompleteContent = useRef("");
+
+	// Trigger autocomplete after 10 seconds of inactivity
+	useEffect(() => {
+		if (!editor) return;
+
+		const text = editor.getText();
+		const trimmedText = text.trim();
+
+		// Don't trigger if content hasn't meaningfully changed
+		if (trimmedText === lastAutocompleteContent.current.trim()) {
+			return;
+		}
+
 		const timer = setTimeout(() => {
-			if (value && editorRef.current) {
-				const pos = editorRef.current.selectionStart;
-				const context = value.slice(Math.max(0, pos - 1000), pos);
-				if (
-					context.endsWith(" ") ||
-					context.endsWith("\n") ||
-					context.length > 20
-				) {
+			const cursorPos = editor.state.selection.$head.pos;
+
+			// Only trigger if there's actual content (not just whitespace)
+			if (trimmedText.length > 20) {
+				const context = text.slice(Math.max(0, cursorPos - 1000), cursorPos);
+				// Only suggest if cursor is at a natural break point
+				if (context.trim().length > 10) {
+					lastAutocompleteContent.current = text;
 					fetchSuggestion(context, personaId);
 				}
 			}
-		}, 1000);
+		}, 10000); // 10 seconds
 
-		return () => {
-			clearTimeout(timer);
-			clearSuggestion();
-		};
-	}, [value, personaId, fetchSuggestion, clearSuggestion]);
-
-	// Auto-resize textarea
-	useEffect(() => {
-		if (editorRef.current) {
-			editorRef.current.style.height = "auto";
-			editorRef.current.style.height =
-				Math.max(editorRef.current.scrollHeight, 500) + "px";
-		}
-	}, [value]);
-
-	const handleSelect = (e: any) => {
-		const pos = e.target.selectionStart;
-		setCursorPos(pos);
-		onCursorChange?.(pos);
-	};
+		return () => clearTimeout(timer);
+	}, [editor?.state.doc.content, personaId, fetchSuggestion, editor]);
 
 	return (
 		<div className='relative w-full h-full'>
 			{/* Remote Cursors (Simplified) */}
 			{presence.map(
 				(user) =>
-					user.cursor_position !== undefined &&
-					user.cursor_position !== cursorPos && (
+					user.cursor_position !== undefined && (
 						<div
 							key={user.user_id}
 							className='absolute pointer-events-none w-0.5 h-6 animate-pulse z-20'
 							style={{
 								backgroundColor: user.color,
-								// This is a placeholder - real positioning requires measuring text
-								// Left/Top would need complex calculation
-								display: "none", // Hidden for now until we have better measurement
+								display: "none", // Hidden until we have better measurement
 							}}
 						>
 							<div
@@ -112,31 +186,8 @@ export function Editor({
 					)
 			)}
 
-			{/* Ghost Text Layer */}
-			{suggestion && editorRef.current && (
-				<div
-					className='absolute top-0 left-0 w-full p-8 pointer-events-none whitespace-pre-wrap break-words text-foreground-muted opacity-50 font-serif text-lg leading-relaxed'
-					style={{ zIndex: 0 }}
-				>
-					<span className='invisible'>{value.slice(0, cursorPos)}</span>
-					<span className='animate-fade-in'>{suggestion}</span>
-				</div>
-			)}
-
-			<textarea
-				ref={editorRef}
-				value={value}
-				onChange={(e) => onChange(e.target.value, e.target.selectionStart)}
-				onKeyDown={handleKeyDown}
-				onSelect={handleSelect}
-				placeholder={placeholder || "Start writing..."}
-				className={cn(
-					"w-full min-h-[500px] p-8 bg-transparent resize-none relative z-10",
-					"editor-content font-serif text-lg leading-relaxed",
-					"focus:outline-none"
-				)}
-				spellCheck='true'
-			/>
+			{/* TipTap Editor */}
+			<EditorContent editor={editor} />
 		</div>
 	);
 }

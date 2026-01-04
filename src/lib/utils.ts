@@ -8,10 +8,27 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
+ * Helper to parse dates from backend consistently as UTC
+ */
+export function parseDate(date: string | Date): Date {
+	if (date instanceof Date) return date;
+
+	// If it's an ISO string without timezone info (Z or +/-), append Z to treat as UTC
+	if (
+		typeof date === "string" &&
+		!date.includes("Z") &&
+		!/[+-]\d{2}:?\d{2}$/.test(date)
+	) {
+		return new Date(`${date}Z`);
+	}
+	return new Date(date);
+}
+
+/**
  * Format a date string to a readable format
  */
 export function formatDate(date: string | Date): string {
-	const d = new Date(date);
+	const d = parseDate(date);
 	return d.toLocaleDateString("en-US", {
 		month: "short",
 		day: "numeric",
@@ -23,7 +40,7 @@ export function formatDate(date: string | Date): string {
  * Format a date to relative time (e.g., "2 hours ago")
  */
 export function formatRelativeTime(date: string | Date): string {
-	const d = new Date(date);
+	const d = parseDate(date);
 	const now = new Date();
 	const diffMs = now.getTime() - d.getTime();
 	const diffSecs = Math.floor(diffMs / 1000);

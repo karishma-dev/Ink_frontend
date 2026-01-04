@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
 import { useSendMessage } from "@/features/chat/hooks/useSendMessage";
 import { usePersonas } from "@/features/personas/hooks/usePersonas";
+import { Persona } from "@/features/personas/types";
 import { getErrorMessage } from "@/lib/api";
 
 interface Message {
@@ -37,7 +38,9 @@ export function CollapsibleChat({
 	const sendMessage = useSendMessage();
 	const { data: personasData } = usePersonas();
 	const personas = personasData?.personas || [];
-	const selectedPersona = personas.find((p) => p.id === selectedPersonaId);
+	const selectedPersona = personas.find(
+		(p: Persona) => p.id === selectedPersonaId
+	);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -142,7 +145,7 @@ export function CollapsibleChat({
 						>
 							No persona
 						</button>
-						{personas.map((p) => (
+						{personas.map((p: Persona) => (
 							<button
 								key={p.id}
 								onClick={() => {
