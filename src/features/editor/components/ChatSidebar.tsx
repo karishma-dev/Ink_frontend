@@ -8,14 +8,21 @@ import {
 	Paperclip,
 	FileText,
 	X,
+	ClockCounterClockwise,
+	ChatCircleText,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { usePersonas } from "@/features/personas/hooks/usePersonas";
 import { Persona } from "@/features/personas/types";
-import { sendChatMessageStream } from "@/services/chatService";
+import {
+	sendChatMessageStream,
+	getChatsService,
+	getChatMessagesService,
+} from "@/services/chatService";
 import { useAppDispatch } from "@/store/hooks";
 import { setPendingEdits } from "@/store/editorSlice";
 import { listDocumentsService } from "@/services/documentService";
+import { Streamdown } from "streamdown";
 
 interface Message {
 	id: string;
@@ -47,6 +54,9 @@ export function ChatSidebar({
 	const [mentionQuery, setMentionQuery] = useState("");
 	const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
 	const [availableDocs, setAvailableDocs] = useState<any[]>([]);
+	const [view, setView] = useState<"chat" | "history">("chat");
+	const [history, setHistory] = useState<any[]>([]);
+	const [activeChatId, setActiveChatId] = useState<number | null>(null);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -65,6 +75,19 @@ export function ChatSidebar({
 		};
 		fetchDocs();
 	}, []);
+
+	// Fetch chat history
+	useEffect(() => {
+		if (view === "history") {
+			const fetchHistory = async () => {
+				const res = await getChatsService();
+				if (res.success && res.data) {
+					setHistory(res.data.chats);
+				}
+			};
+			fetchHistory();
+		}
+	}, [view]);
 
 	// Filter documents based on @ query
 	const filteredDocs = availableDocs.filter((doc) =>
@@ -133,6 +156,7 @@ export function ChatSidebar({
 		setInput("");
 		setSelectedDocuments([]);
 		setIsLoading(true);
+		setView("chat");
 
 		const assistantId = `assistant-${Date.now()}`;
 		setMessages((prev) => [
@@ -147,6 +171,7 @@ export function ChatSidebar({
 				draft_content: draftContent,
 				document_ids: selectedDocuments,
 				selection: selection || undefined,
+				chat_id: activeChatId,
 			});
 
 			let fullContent = "";
@@ -161,7 +186,16 @@ export function ChatSidebar({
 					);
 				} else if (event.type === "edits" && event.edits) {
 					dispatch(setPendingEdits(event.edits));
+				} else if (event.type === "error" && event.content) {
+					setMessages((prev) =>
+						prev.map((m) =>
+							m.id === assistantId
+								? { ...m, content: event.content || "", isStreaming: false }
+								: m
+						)
+					);
 				} else if (event.type === "done") {
+					if (event.chat_id) setActiveChatId(event.chat_id);
 					setMessages((prev) =>
 						prev.map((m) =>
 							m.id === assistantId ? { ...m, isStreaming: false } : m
@@ -187,29 +221,91 @@ export function ChatSidebar({
 		}
 	};
 
+	const loadHistorySession = async (chatId: number) => {
+		setIsLoading(true);
+		const res = await getChatMessagesService(chatId);
+		if (res.success && res.data) {
+			const formattedMessages = res.data.messages.map((m: any) => ({
+				id: String(m.id),
+				content: m.content,
+				role: m.role as "user" | "assistant",
+			}));
+			setMessages(formattedMessages);
+			setActiveChatId(chatId);
+		}
+		setIsLoading(false);
+		setView("chat");
+	};
+
 	if (!isOpen) return null;
 
 	return (
 		<div className='flex flex-col h-full bg-background border-l border-border animate-slide-in'>
 			{/* Header */}
-			<div className='p-4 flex items-center justify-between'>
-				<h3 className='font-semibold text-foreground'>AI Assistant</h3>
-				<button
-					onClick={onToggle}
-					className='p-1.5 rounded-lg hover:bg-background-muted transition-colors'
-				>
-					<X className='h-4 w-4 text-foreground-muted' />
-				</button>
+			<div className='p-4 flex items-center justify-between border-b border-border'>
+				<div className='flex items-center gap-2'>
+					<h3 className='font-semibold text-foreground'>
+						{view === "chat" ? "AI Assistant" : "Chat History"}
+					</h3>
+				</div>
+				<div className='flex items-center gap-1'>
+					<button
+						onClick={() => setView(view === "chat" ? "history" : "chat")}
+						className='p-1.5 rounded-lg hover:bg-background-muted transition-colors text-foreground-muted hover:text-foreground'
+						title={view === "chat" ? "See history" : "Back to chat"}
+					>
+						{view === "chat" ? (
+							<ClockCounterClockwise className='h-4 w-4' />
+						) : (
+							<ChatCircleText className='h-4 w-4' />
+						)}
+					</button>
+					<button
+						onClick={onToggle}
+						className='p-1.5 rounded-lg hover:bg-background-muted transition-colors text-foreground-muted hover:text-foreground'
+					>
+						<X className='h-4 w-4' />
+					</button>
+				</div>
 			</div>
 
-			{/* Messages */}
-			<div className='flex-1 overflow-y-auto p-4 space-y-4'>
-				{messages.length === 0 ? (
-					<EmptyState />
+			{/* Content */}
+			<div className='flex-1 overflow-y-auto'>
+				{view === "history" ? (
+					<div className='p-4 space-y-2'>
+						{history.length === 0 ? (
+							<div className='text-center py-10'>
+								<p className='text-sm text-foreground-muted'>No history yet</p>
+							</div>
+						) : (
+							history.map((session) => (
+								<button
+									key={session.id}
+									onClick={() => loadHistorySession(session.id)}
+									className='w-full text-left p-3 rounded-xl hover:bg-background-muted transition-all border border-transparent hover:border-border group'
+								>
+									<p className='text-sm font-medium text-foreground truncate'>
+										{session.last_message || "New Chat"}
+									</p>
+									<p className='text-[10px] text-foreground-muted mt-1'>
+										{new Date(session.updated_at).toLocaleDateString()}
+									</p>
+								</button>
+							))
+						)}
+					</div>
 				) : (
-					messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
+					<div className='p-4 space-y-4'>
+						{messages.length === 0 ? (
+							<EmptyState />
+						) : (
+							messages.map((msg) => (
+								<MessageBubble key={msg.id} message={msg} />
+							))
+						)}
+						<div ref={messagesEndRef} />
+					</div>
 				)}
-				<div ref={messagesEndRef} />
 			</div>
 
 			{/* Input Area */}
@@ -339,9 +435,9 @@ function MessageBubble({ message }: { message: Message }) {
 			</div>
 			<div
 				className={cn(
-					"max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed",
+					"max-w-[85%] rounded-2xl text-sm leading-relaxed",
 					isUser
-						? "bg-primary text-primary-foreground rounded-tr-sm"
+						? "px-4 py-3 bg-primary text-primary-foreground rounded-tr-sm"
 						: "bg-background-muted text-foreground rounded-tl-sm"
 				)}
 			>
@@ -352,7 +448,9 @@ function MessageBubble({ message }: { message: Message }) {
 						<span className='w-1.5 h-1.5 rounded-full bg-current opacity-40 animate-pulse [animation-delay:400ms]' />
 					</div>
 				) : (
-					<p className='whitespace-pre-wrap'>{message.content}</p>
+					<div className='streamdown-content'>
+						<Streamdown>{message.content}</Streamdown>
+					</div>
 				)}
 			</div>
 		</div>

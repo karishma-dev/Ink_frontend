@@ -27,7 +27,7 @@ export interface SendMessageParams {
 }
 
 export interface ChatSSEEvent {
-	type: "status" | "content" | "edits" | "citations" | "done";
+	type: "status" | "content" | "edits" | "citations" | "done" | "error";
 	content?: string;
 	edits?: Array<{
 		type: string;
@@ -42,6 +42,8 @@ export interface ChatSSEEvent {
 		chunk_text: string;
 	}>;
 	has_edits?: boolean;
+	chat_id?: number | null;
+	mode?: string;
 }
 
 /**
@@ -109,7 +111,7 @@ export const getChatsService = () => {
  */
 export const getChatMessagesService = (chatId: number) => {
 	return tryCatchWrapperForService(async () => {
-		const response = await api.get(`/chats/${chatId}/messages`);
+		const response = await api.get(`/chat/${chatId}`);
 		return response.data;
 	});
 };

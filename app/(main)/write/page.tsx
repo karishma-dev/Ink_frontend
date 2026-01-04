@@ -172,7 +172,7 @@ export default function WritePage() {
 			<div className='flex-1 flex overflow-hidden bg-[#FEFEFA]'>
 				{/* Editor */}
 				<main className='flex-1 overflow-y-auto'>
-					<div className='max-w-3xl mx-auto py-12 px-8'>
+					<div className='mx-auto'>
 						<Editor
 							value={content}
 							onChange={(val, pos) => {
