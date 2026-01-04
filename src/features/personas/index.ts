@@ -8,6 +8,11 @@ export {
 	useUpdatePersona,
 	useDeletePersona,
 } from "./hooks/usePersonas";
+export {
+	useActivePersona,
+	useSetActivePersona,
+	useClearActivePersona,
+} from "./hooks/useActivePersona";
 export type {
 	Persona,
 	CreatePersonaRequest,

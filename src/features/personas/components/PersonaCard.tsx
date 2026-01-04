@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Edit2, Trash2, Users } from "lucide-react";
-import { Card, Badge, Button } from "@/components/ui";
+import { Edit2, Trash2, Users, Check } from "lucide-react";
+import { Card, Badge, Button, useToast } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils";
 import { Persona } from "../types";
+import {
+	useActivePersona,
+	useSetActivePersona,
+	useClearActivePersona,
+} from "../hooks/useActivePersona";
 
 interface PersonaCardProps {
 	persona: Persona;
@@ -17,6 +22,27 @@ export function PersonaCard({
 	onDelete,
 	isDeleting,
 }: PersonaCardProps) {
+	const { showToast } = useToast();
+	const { data: activePersonaId } = useActivePersona();
+	const setActivePersona = useSetActivePersona();
+	const clearActivePersona = useClearActivePersona();
+
+	const isActive = activePersonaId === persona.id;
+
+	const handleSetActive = async () => {
+		try {
+			if (isActive) {
+				await clearActivePersona.mutateAsync();
+				showToast("success", "Active persona cleared");
+			} else {
+				await setActivePersona.mutateAsync(persona.id);
+				showToast("success", `"${persona.name}" set as active persona`);
+			}
+		} catch {
+			showToast("error", "Failed to update active persona");
+		}
+	};
+
 	const getLevelLabel = (level: number): string => {
 		if (level <= 3) return "Low";
 		if (level <= 6) return "Medium";
@@ -24,7 +50,15 @@ export function PersonaCard({
 	};
 
 	return (
-		<Card hover className='group'>
+		<Card hover className='group relative'>
+			{isActive && (
+				<div className='absolute top-3 right-3'>
+					<Badge variant='success' className='gap-1'>
+						<Check className='h-3 w-3' />
+						Active
+					</Badge>
+				</div>
+			)}
 			<div className='flex items-start justify-between mb-3'>
 				<div className='flex items-center gap-3'>
 					<div className='w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center'>
@@ -89,6 +123,19 @@ export function PersonaCard({
 					)}
 				</div>
 			)}
+
+			{/* Actions */}
+			<div className='mt-4 pt-3 border-t border-border'>
+				<Button
+					variant={isActive ? "secondary" : "primary"}
+					size='sm'
+					onClick={handleSetActive}
+					disabled={setActivePersona.isPending || clearActivePersona.isPending}
+					className='w-full'
+				>
+					{isActive ? "Clear as Active" : "Set as Active"}
+				</Button>
+			</div>
 		</Card>
 	);
 }

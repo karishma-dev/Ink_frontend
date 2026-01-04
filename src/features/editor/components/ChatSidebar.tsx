@@ -270,7 +270,7 @@ export function ChatSidebar({
 			</div>
 
 			{/* Content */}
-			<div className='flex-1 overflow-y-auto'>
+			<div className='flex-1 overflow-y-auto max-h-[calc(100vh-220px)]'>
 				{view === "history" ? (
 					<div className='p-4 space-y-2'>
 						{history.length === 0 ? (
@@ -295,7 +295,7 @@ export function ChatSidebar({
 						)}
 					</div>
 				) : (
-					<div className='p-4 space-y-4'>
+					<div className='p-4 space-y-4 h-full'>
 						{messages.length === 0 ? (
 							<EmptyState />
 						) : (
